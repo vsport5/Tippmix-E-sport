@@ -18,11 +18,19 @@ def scrape(
     db: Path = typer.Option(Path("tippmix.db"), exists=False, dir_okay=False, help="SQLite database path"),
     interval: int = typer.Option(20, min=5, help="Polling interval seconds"),
     headless: bool = typer.Option(True, help="Run browser in headless mode"),
+    monitor_network: bool = typer.Option(True, help="Log all network events to DB"),
 ):
     """Run continuous Tippmix E-sport football scraper."""
     asyncio.run(init_db(str(db)))
     try:
-        asyncio.run(run_scraper(str(db), interval_seconds=interval, headless=headless))
+        asyncio.run(
+            run_scraper(
+                str(db),
+                interval_seconds=interval,
+                headless=headless,
+                monitor_network=monitor_network,
+            )
+        )
     except KeyboardInterrupt:
         print("[yellow]Stopped by user[/]")
 

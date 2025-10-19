@@ -11,7 +11,7 @@ from loguru import logger
 from playwright.async_api import async_playwright, Browser, Page
 
 from .parser import parse_match
-from .storage import insert_raw, upsert_match
+from .storage import insert_raw, upsert_match, insert_network_event
 
 
 TARGET_URL = (
@@ -87,12 +87,30 @@ async def process_payload(db_path: str, payload: Dict[str, Any]) -> int:
 
 
 @backoff.on_exception(backoff.expo, Exception, max_time=300)
-async def run_scraper(db_path: str, interval_seconds: int = 20, headless: bool = True) -> None:
+async def run_scraper(
+    db_path: str,
+    interval_seconds: int = 20,
+    headless: bool = True,
+    monitor_network: bool = True,
+) -> None:
     logger.info("Starting Tippmix E-sport scraper...")
     while True:
         total_inserted = 0
         async for page in capture_page(TARGET_URL, headless=headless):
             # listen to API responses
+            if monitor_network:
+                page.on(
+                    "request",
+                    lambda req: asyncio.create_task(_handle_request(db_path, req)),
+                )
+                page.on(
+                    "requestfailed",
+                    lambda req: asyncio.create_task(_handle_request_failed(db_path, req)),
+                )
+                page.on(
+                    "requestfinished",
+                    lambda req: asyncio.create_task(_handle_request_finished(db_path, req)),
+                )
             page.on(
                 "response",
                 lambda resp: asyncio.create_task(_handle_response(db_path, resp)),
@@ -111,6 +129,34 @@ async def run_scraper(db_path: str, interval_seconds: int = 20, headless: bool =
 async def _handle_response(db_path: str, resp) -> None:
     try:
         url = resp.url
+        try:
+            status = resp.status
+        except Exception:
+            status = None
+        try:
+            req = resp.request
+            method = getattr(req, "method", lambda: None)()
+            resource_type = getattr(req, "resource_type", lambda: None)()
+        except Exception:
+            method = None
+            resource_type = None
+        headers = None
+        try:
+            headers = await resp.all_headers()
+        except Exception:
+            headers = None
+        await insert_network_event(
+            db_path,
+            phase="response",
+            url=url,
+            method=method,
+            status=status,
+            resource_type=resource_type,
+            headers=headers,
+            body_bytes=None,
+            duration_ms=None,
+            error=None,
+        )
         if not is_api_request(url):
             return
         payload = await extract_json_from_response(resp)
@@ -121,3 +167,92 @@ async def _handle_response(db_path: str, resp) -> None:
             logger.info("Processed {} matches from {}", count, url)
     except Exception as e:
         logger.debug("Error handling response: {}", e)
+
+
+async def _handle_request(db_path: str, req) -> None:
+    try:
+        url = req.url
+        method = req.method
+        resource_type = req.resource_type
+        headers = req.headers
+        await insert_network_event(
+            db_path,
+            phase="request",
+            url=url,
+            method=method,
+            status=None,
+            resource_type=resource_type,
+            headers=headers,
+            body_bytes=None,
+            duration_ms=None,
+            error=None,
+        )
+    except Exception as e:
+        logger.debug("Error handling request: {}", e)
+
+
+async def _handle_request_failed(db_path: str, req) -> None:
+    try:
+        url = req.url
+        method = req.method
+        resource_type = req.resource_type
+        headers = req.headers
+        err = getattr(req, "failure", lambda: None)() or {}
+        err_text = None
+        try:
+            err_text = err.get("errorText") if isinstance(err, dict) else str(err)
+        except Exception:
+            err_text = None
+        await insert_network_event(
+            db_path,
+            phase="failed",
+            url=url,
+            method=method,
+            status=None,
+            resource_type=resource_type,
+            headers=headers,
+            body_bytes=None,
+            duration_ms=None,
+            error=err_text,
+        )
+    except Exception as e:
+        logger.debug("Error handling requestfailed: {}", e)
+
+
+async def _handle_request_finished(db_path: str, req) -> None:
+    try:
+        url = req.url
+        method = req.method
+        resource_type = req.resource_type
+        headers = req.headers
+        timing = getattr(req, "timing", lambda: None)() or {}
+        duration = None
+        try:
+            start = timing.get("startTime")
+            end = timing.get("responseEnd") or timing.get("endTime")
+            if start is not None and end is not None:
+                duration = float(end) - float(start)
+        except Exception:
+            duration = None
+        size = None
+        try:
+            resp = await req.response()
+            if resp is not None:
+                body = await resp.body()
+                size = len(body) if body else None
+        except Exception:
+            size = None
+        await insert_network_event(
+            db_path,
+            phase="finished",
+            url=url,
+            method=method,
+            status=None,
+            resource_type=resource_type,
+            headers=headers,
+            body_bytes=size,
+            duration_ms=duration,
+            error=None,
+        )
+    except Exception as e:
+        logger.debug("Error handling requestfinished: {}", e)
