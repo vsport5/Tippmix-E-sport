@@ -19,6 +19,11 @@ python -m tippmix_scraper.cli scrape --db tippmix.db --interval 30 --headless Tr
 
 The scraper opens the given URL and captures JSON API responses, parses possible E-sport football matches, and upserts them into SQLite. Raw payloads are also stored.
 
+## Options
+- `--monitor-network/--no-monitor-network`: enable/disable logging all network events to `network_events`.
+- `--interval`: scrape cadence in seconds (default: 20).
+- `--headless`: run browser headless (default: True).
+
 ## Notes
 - Built with Playwright. Some endpoints may be obfuscated or protected. The scraper listens to network responses and heuristically parses structures.
 - Adjust `interval` to control scraping cadence.
