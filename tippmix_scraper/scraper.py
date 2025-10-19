@@ -45,10 +45,19 @@ def is_api_request(url: str) -> bool:
 
 async def capture_page(url: str, headless: bool = True) -> AsyncIterator[Page]:
     async with launch_browser(headless=headless) as browser:
-        context = await browser.new_context(user_agent=(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-        ))
+        context = await browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
+            ),
+            viewport={"width": 390, "height": 844},
+            is_mobile=True,
+            has_touch=True,
+            locale="hu-HU",
+            extra_http_headers={
+                "Accept-Language": "hu-HU,hu;q=0.9,en;q=0.8",
+            },
+        )
         page = await context.new_page()
         # apply stealth to reduce detection
         try:
@@ -56,6 +65,23 @@ async def capture_page(url: str, headless: bool = True) -> AsyncIterator[Page]:
         except Exception:
             pass
         await page.goto(url)
+        # attempt to accept cookie banners if present (best-effort)
+        try:
+            for text in ("Elfogad", "Rendben", "Elfogadom", "Accept all"):
+                btn = page.get_by_role("button", name=text)
+                if await btn.count() > 0:
+                    await btn.first.click(timeout=2000)
+                    break
+        except Exception:
+            pass
+        # save a quick snapshot for debugging
+        try:
+            await page.screenshot(path="/workspace/screenshot.png", full_page=True)
+            html = await page.content()
+            with open("/workspace/page.html", "w", encoding="utf-8") as f:
+                f.write(html)
+        except Exception:
+            pass
         try:
             yield page
         finally:
@@ -120,6 +146,44 @@ async def run_scraper(
                     "requestfinished",
                     lambda req: asyncio.create_task(_handle_request_finished(db_path, req)),
                 )
+                # capture websocket endpoints as well
+                def _on_ws(ws):
+                    try:
+                        asyncio.create_task(
+                            insert_network_event(
+                                db_path,
+                                phase="websocket_open",
+                                url=ws.url,
+                                method=None,
+                                status=None,
+                                resource_type="websocket",
+                                headers=None,
+                                body_bytes=None,
+                                duration_ms=None,
+                                error=None,
+                            )
+                        )
+                        ws.on(
+                            "close",
+                            lambda: asyncio.create_task(
+                                insert_network_event(
+                                    db_path,
+                                    phase="websocket_close",
+                                    url=ws.url,
+                                    method=None,
+                                    status=None,
+                                    resource_type="websocket",
+                                    headers=None,
+                                    body_bytes=None,
+                                    duration_ms=None,
+                                    error=None,
+                                )
+                            ),
+                        )
+                    except Exception as e:
+                        logger.debug("Error handling websocket: {}", e)
+
+                page.on("websocket", _on_ws)
             page.on(
                 "response",
                 lambda resp: asyncio.create_task(_handle_response(db_path, resp)),
