@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Iterable, Optional
+from typing import Optional, Dict
 
 import aiosqlite
 
@@ -40,6 +40,20 @@ CREATE TABLE IF NOT EXISTS raw_responses (
     match_id TEXT,
     payload TEXT NOT NULL,
     received_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS network_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    occurred_at TEXT NOT NULL,
+    phase TEXT NOT NULL, -- request | response | failed | finished
+    url TEXT NOT NULL,
+    method TEXT,
+    status INTEGER,
+    resource_type TEXT,
+    headers TEXT,
+    body_bytes INTEGER,
+    duration_ms REAL,
+    error TEXT
 );
 """
 
@@ -98,5 +112,42 @@ async def insert_raw(db_path: str, match_id: Optional[str], payload: dict) -> No
         await db.execute(
             "INSERT INTO raw_responses(match_id, payload, received_at) VALUES(?, ?, ?)",
             (match_id, json.dumps(payload, ensure_ascii=False), datetime.utcnow().isoformat()),
+        )
+        await db.commit()
+
+
+async def insert_network_event(
+    db_path: str,
+    *,
+    phase: str,
+    url: str,
+    method: Optional[str] = None,
+    status: Optional[int] = None,
+    resource_type: Optional[str] = None,
+    headers: Optional[Dict[str, str]] = None,
+    body_bytes: Optional[int] = None,
+    duration_ms: Optional[float] = None,
+    error: Optional[str] = None,
+) -> None:
+    payload_headers = json.dumps(headers or {}, ensure_ascii=False)
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute(
+            """
+            INSERT INTO network_events(
+                occurred_at, phase, url, method, status, resource_type, headers, body_bytes, duration_ms, error
+            ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                datetime.utcnow().isoformat(),
+                phase,
+                url,
+                method,
+                status,
+                resource_type,
+                payload_headers,
+                body_bytes,
+                duration_ms,
+                error,
+            ),
         )
         await db.commit()
