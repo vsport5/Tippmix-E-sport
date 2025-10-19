@@ -15,7 +15,7 @@ app = typer.Typer(add_completion=False)
 
 @app.command()
 def scrape(
-    db: Path = typer.Option(Path("tippmix.db"), exists=False, dir_okay=False, help="SQLite database path"),
+    db: Path = typer.Option(Path("tippmix.db"), help="SQLite database path"),
     interval: int = typer.Option(20, min=5, help="Polling interval seconds"),
     headless: bool = typer.Option(True, help="Run browser in headless mode"),
     monitor_network: bool = typer.Option(True, help="Log all network events to DB"),

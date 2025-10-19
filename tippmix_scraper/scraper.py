@@ -9,6 +9,7 @@ from typing import Any, AsyncIterator, Dict, Iterable, List
 import backoff
 from loguru import logger
 from playwright.async_api import async_playwright, Browser, Page
+from playwright_stealth import stealth_async
 
 from .parser import parse_match
 from .storage import insert_raw, upsert_match, insert_network_event
@@ -28,7 +29,10 @@ API_GLOBS = [
 @asynccontextmanager
 async def launch_browser(headless: bool = True) -> AsyncIterator[Browser]:
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=headless)
+        browser = await p.chromium.launch(
+            headless=headless,
+            args=["--no-sandbox", "--disable-setuid-sandbox"],
+        )
         try:
             yield browser
         finally:
@@ -46,6 +50,11 @@ async def capture_page(url: str, headless: bool = True) -> AsyncIterator[Page]:
             "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
         ))
         page = await context.new_page()
+        # apply stealth to reduce detection
+        try:
+            await stealth_async(page)
+        except Exception:
+            pass
         await page.goto(url)
         try:
             yield page
@@ -225,13 +234,19 @@ async def _handle_request_finished(db_path: str, req) -> None:
         method = req.method
         resource_type = req.resource_type
         headers = req.headers
-        timing = getattr(req, "timing", lambda: None)() or {}
+        timing_attr = getattr(req, "timing", None)
+        timing = None
+        try:
+            timing = timing_attr() if callable(timing_attr) else timing_attr
+        except Exception:
+            timing = None
         duration = None
         try:
-            start = timing.get("startTime")
-            end = timing.get("responseEnd") or timing.get("endTime")
-            if start is not None and end is not None:
-                duration = float(end) - float(start)
+            if isinstance(timing, dict):
+                start = timing.get("startTime")
+                end = timing.get("responseEnd") or timing.get("endTime")
+                if start is not None and end is not None:
+                    duration = float(end) - float(start)
         except Exception:
             duration = None
         size = None

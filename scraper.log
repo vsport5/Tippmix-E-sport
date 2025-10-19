@@ -1,0 +1,9 @@
+2025-10-19 18:59:02.676 | INFO     | tippmix_scraper.scraper:run_scraper:99 - Starting Tippmix E-sport scraper...
+2025-10-19 18:59:05.515 | DEBUG    | tippmix_scraper.scraper:_handle_request_finished:261 - Error handling requestfinished: 'dict' object is not callable
+2025-10-19 18:59:17.566 | INFO     | tippmix_scraper.scraper:run_scraper:128 - Cycle complete. Sleeping 20s
+2025-10-19 18:59:40.460 | DEBUG    | tippmix_scraper.scraper:_handle_request_finished:261 - Error handling requestfinished: 'dict' object is not callable
+2025-10-19 18:59:52.493 | INFO     | tippmix_scraper.scraper:run_scraper:128 - Cycle complete. Sleeping 20s
+2025-10-19 19:00:15.173 | DEBUG    | tippmix_scraper.scraper:_handle_request_finished:261 - Error handling requestfinished: 'dict' object is not callable
+2025-10-19 19:00:27.203 | INFO     | tippmix_scraper.scraper:run_scraper:128 - Cycle complete. Sleeping 20s
+2025-10-19 19:00:50.001 | DEBUG    | tippmix_scraper.scraper:_handle_request_finished:261 - Error handling requestfinished: 'dict' object is not callable
+2025-10-19 19:01:02.044 | INFO     | tippmix_scraper.scraper:run_scraper:128 - Cycle complete. Sleeping 20s
