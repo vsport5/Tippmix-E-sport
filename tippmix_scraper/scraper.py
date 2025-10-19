@@ -13,6 +13,7 @@ from playwright_stealth import stealth_async
 
 from .parser import parse_match
 from .storage import insert_raw, upsert_match, insert_network_event
+import httpx
 
 
 TARGET_URL = (
@@ -335,3 +336,79 @@ async def _handle_request_finished(db_path: str, req) -> None:
         )
     except Exception as e:
         logger.debug("Error handling requestfinished: {}", e)
+
+
+# --------------------------
+# HTTP API polling
+# --------------------------
+
+API_BASE = "https://api.tippmix.hu"
+API_ENDPOINTS = [
+    "/tippmix/search-filter",
+    "/event",
+    "/tippmix/search",
+]
+
+
+async def poll_api_once(db_path: str, client: httpx.AsyncClient) -> int:
+    processed = 0
+    for path in API_ENDPOINTS:
+        url = API_BASE + path
+        try:
+            resp = await client.get(url, timeout=20)
+            await insert_network_event(
+                db_path,
+                phase="api_response",
+                url=url,
+                method="GET",
+                status=resp.status_code,
+                resource_type="http",
+                headers=dict(resp.headers),
+                body_bytes=len(resp.content) if resp.content else 0,
+                duration_ms=None,
+                error=None,
+            )
+            if resp.headers.get("content-type", "").lower().find("json") >= 0:
+                data = resp.json()
+                # Store raw
+                await insert_raw(db_path, None, data)
+                # Try parse matches
+                processed += await process_payload(db_path, data)
+        except Exception as e:
+            await insert_network_event(
+                db_path,
+                phase="api_error",
+                url=url,
+                method="GET",
+                status=None,
+                resource_type="http",
+                headers=None,
+                body_bytes=None,
+                duration_ms=None,
+                error=str(e),
+            )
+    return processed
+
+
+@backoff.on_exception(backoff.expo, Exception, max_time=300)
+async def run_api_poller(db_path: str, interval_seconds: int = 60) -> None:
+    headers = {
+        "Accept": "application/json, text/plain, */*",
+        "User-Agent": (
+            "Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
+        ),
+        "Accept-Language": "hu-HU,hu;q=0.9,en;q=0.8",
+        "Origin": "https://www.tippmix.hu",
+        "Referer": "https://www.tippmix.hu/",
+    }
+    async with httpx.AsyncClient(headers=headers, http2=True, verify=True) as client:
+        logger.info("Starting Tippmix API poller...")
+        while True:
+            try:
+                count = await poll_api_once(db_path, client)
+                if count:
+                    logger.info("API poller parsed {} matches", count)
+            except Exception as e:
+                logger.debug("API poller error: {}", e)
+            await asyncio.sleep(interval_seconds)
