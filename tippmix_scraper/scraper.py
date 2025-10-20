@@ -391,7 +391,30 @@ async def poll_api_once(db_path: str, client: httpx.AsyncClient) -> int:
                 duration_ms=None,
                 error=None,
             )
-            if resp.headers.get("content-type", "").lower().find("json") >= 0:
+            ctype = (resp.headers.get("content-type") or "").lower()
+            # detect redirects to block page or html payloads
+            redirected_to = None
+            try:
+                if getattr(resp, "history", None):
+                    for h in resp.history:  # type: ignore[attr-defined]
+                        loc = h.headers.get("location") if hasattr(h, 'headers') else None
+                        if loc:
+                            redirected_to = loc
+                            break
+            except Exception:
+                redirected_to = None
+            if "ip-blokk" in (redirected_to or "") or ("text/html" in ctype):
+                await insert_block_event(
+                    db_path,
+                    source="api",
+                    url=url,
+                    status=resp.status_code,
+                    block_type="geo_ip_block" if "ip-blokk" in (redirected_to or "") else "html_block",
+                    evidence=f"redirect:{redirected_to}" if redirected_to else f"ctype:{ctype}",
+                    proxy_used=str(client._proxies) if hasattr(client, "_proxies") else None,
+                    user_agent=client.headers.get("User-Agent"),
+                )
+            if ctype.find("json") >= 0:
                 data = resp.json()
                 # Store raw
                 await insert_raw(db_path, None, data)
