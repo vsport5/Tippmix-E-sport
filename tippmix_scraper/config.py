@@ -4,9 +4,22 @@ import os
 from typing import Optional, Dict
 
 
+ACTIVE_PROXY_FILE = "/workspace/active_proxy.txt"
+
+
 def get_proxy_from_env() -> Optional[str]:
-    # Prefer HTTPS_PROXY, then HTTP_PROXY
-    return os.getenv("PROXY_URL") or os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY")
+    # Prefer HTTPS_PROXY, then HTTP_PROXY, then active proxy file
+    val = os.getenv("PROXY_URL") or os.getenv("HTTPS_PROXY") or os.getenv("HTTP_PROXY")
+    if val:
+        return val
+    try:
+        if os.path.exists(ACTIVE_PROXY_FILE):
+            with open(ACTIVE_PROXY_FILE, "r", encoding="utf-8") as f:
+                line = f.read().strip()
+                return line or None
+    except Exception:
+        return None
+    return None
 
 
 def get_playwright_proxy_settings() -> Optional[Dict[str, str]]:

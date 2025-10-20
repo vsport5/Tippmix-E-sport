@@ -10,6 +10,7 @@ from rich import print
 from .scraper import run_scraper, run_api_poller
 from .storage import init_db
 from .blocker import next_action
+from .mitigator import auto_mitigate
 
 app = typer.Typer(add_completion=False)
 
@@ -68,6 +69,18 @@ def analyze(db: Path = typer.Option(Path("tippmix.db"), help="SQLite database pa
     for ts, src, url, status, bt, ev in rows:
         strat, why = next_action(bt)
         print(f"[bold]{ts}[/] {src} {status} {bt}\n- {url}\n- evidence: {ev}\n- mitigation: {strat} ({why})\n")
+
+
+@app.command()
+def mitigate(
+    block_type: str = typer.Argument(..., help="Block type to mitigate (e.g., geo_ip_block)"),
+):
+    """Attempt automated mitigation for a block type."""
+    res = asyncio.run(auto_mitigate(block_type))
+    if res:
+        print(f"[green]Mitigation applied[/]: active proxy -> {res}")
+    else:
+        print("[yellow]No mitigation change applied[/]")
 
 
 if __name__ == "__main__":
