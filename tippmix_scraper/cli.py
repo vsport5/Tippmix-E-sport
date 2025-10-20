@@ -8,6 +8,7 @@ import typer
 from rich import print
 
 from .scraper import run_scraper, run_api_poller
+from .selenium_scraper import run_selenium_scraper
 from .storage import init_db
 from .blocker import next_action
 from .mitigator import auto_mitigate
@@ -81,6 +82,19 @@ def mitigate(
         print(f"[green]Mitigation applied[/]: active proxy -> {res}")
     else:
         print("[yellow]No mitigation change applied[/]")
+
+
+@app.command()
+def scrape_selenium(
+    db: Path = typer.Option(Path("tippmix.db"), help="SQLite database path"),
+    duration: int = typer.Option(45, min=10, help="Duration to keep the browser open (s)"),
+):
+    """Run Selenium-based scraper with network capture."""
+    asyncio.run(init_db(str(db)))
+    try:
+        run_selenium_scraper(str(db), duration_seconds=duration)
+    except KeyboardInterrupt:
+        print("[yellow]Stopped by user[/]")
 
 
 if __name__ == "__main__":
