@@ -7,12 +7,61 @@ from typing import Any, Dict, List
 from loguru import logger
 from seleniumwire import webdriver  # type: ignore
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+import os
+import httpx
+import zipfile
+import io
+from pathlib import Path
 
 from .parser import parse_match
 from .storage import upsert_match, insert_raw, insert_network_event, insert_block_event
 from .config import get_proxy_from_env
 
 TARGET_URL = "https://www.tippmix.hu/mobil/sportfogadas#?sportid=999&countryid=99999988&page=1"
+
+
+def find_playwright_chromium() -> str | None:
+    base = Path(os.path.expanduser("~/.cache/ms-playwright"))
+    if not base.exists():
+        return None
+    for d in sorted(base.iterdir(), reverse=True):
+        if d.is_dir() and d.name.startswith("chromium-"):
+            candidate = d / "chrome-linux" / "chrome"
+            if candidate.exists():
+                return str(candidate)
+    return None
+
+
+def ensure_chromedriver(version: str = "130.0.6723.91") -> str | None:
+    bin_dir = Path("/workspace/bin")
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    driver_path = bin_dir / "chromedriver"
+    if driver_path.exists():
+        return str(driver_path)
+    urls = [
+        f"https://storage.googleapis.com/chrome-for-testing-public/{version}/linux64/chromedriver-linux64.zip",
+        # fallback to latest for major 130
+        "https://storage.googleapis.com/chrome-for-testing-public/130.0.6723.91/linux64/chromedriver-linux64.zip",
+    ]
+    for url in urls:
+        try:
+            with httpx.Client(timeout=30) as client:
+                r = client.get(url)
+                if r.status_code != 200:
+                    continue
+                z = zipfile.ZipFile(io.BytesIO(r.content))
+                # Path inside zip: chromedriver-linux64/chromedriver
+                for name in z.namelist():
+                    if name.endswith("/chromedriver"):
+                        z.extract(name, str(bin_dir))
+                        src = bin_dir / name
+                        src.rename(driver_path)
+                        os.chmod(driver_path, 0o755)
+                        return str(driver_path)
+        except Exception:
+            continue
+    return None
 
 
 def build_driver():
@@ -25,6 +74,17 @@ def build_driver():
     chrome_options.add_argument(
         "--user-agent=Mozilla/5.0 (Linux; Android 11; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36"
     )
+    # Try to reuse Playwright's Chromium binary
+    chromium_bin = find_playwright_chromium()
+    if chromium_bin:
+        chrome_options.binary_location = chromium_bin
+    service = None
+    try:
+        driver_bin = ensure_chromedriver()
+        if driver_bin:
+            service = Service(executable_path=driver_bin)
+    except Exception:
+        service = None
     proxy_url = get_proxy_from_env()
     seleniumwire_options = {}
     if proxy_url:
@@ -35,7 +95,10 @@ def build_driver():
                 'no_proxy': 'localhost,127.0.0.1'
             }
         }
-    driver = webdriver.Chrome(options=chrome_options, seleniumwire_options=seleniumwire_options)
+    if service is not None:
+        driver = webdriver.Chrome(service=service, options=chrome_options, seleniumwire_options=seleniumwire_options)
+    else:
+        driver = webdriver.Chrome(options=chrome_options, seleniumwire_options=seleniumwire_options)
     return driver
 
 
