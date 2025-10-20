@@ -55,6 +55,18 @@ CREATE TABLE IF NOT EXISTS network_events (
     duration_ms REAL,
     error TEXT
 );
+
+CREATE TABLE IF NOT EXISTS block_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    occurred_at TEXT NOT NULL,
+    source TEXT NOT NULL, -- 'api' | 'web'
+    url TEXT,
+    status INTEGER,
+    block_type TEXT NOT NULL,
+    evidence TEXT,
+    proxy_used TEXT,
+    user_agent TEXT
+);
 """
 
 
@@ -112,6 +124,37 @@ async def insert_raw(db_path: str, match_id: Optional[str], payload: dict) -> No
         await db.execute(
             "INSERT INTO raw_responses(match_id, payload, received_at) VALUES(?, ?, ?)",
             (match_id, json.dumps(payload, ensure_ascii=False), datetime.utcnow().isoformat()),
+        )
+        await db.commit()
+
+
+async def insert_block_event(
+    db_path: str,
+    *,
+    source: str,
+    url: Optional[str],
+    status: Optional[int],
+    block_type: str,
+    evidence: Optional[str] = None,
+    proxy_used: Optional[str] = None,
+    user_agent: Optional[str] = None,
+) -> None:
+    async with aiosqlite.connect(db_path) as db:
+        await db.execute(
+            """
+            INSERT INTO block_events(occurred_at, source, url, status, block_type, evidence, proxy_used, user_agent)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                datetime.utcnow().isoformat(),
+                source,
+                url,
+                status,
+                block_type,
+                evidence,
+                proxy_used,
+                user_agent,
+            ),
         )
         await db.commit()
 

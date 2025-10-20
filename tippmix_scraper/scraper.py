@@ -12,7 +12,7 @@ from playwright.async_api import async_playwright, Browser, Page
 from playwright_stealth import stealth_async
 
 from .parser import parse_match
-from .storage import insert_raw, upsert_match, insert_network_event
+from .storage import insert_raw, upsert_match, insert_network_event, insert_block_event
 from .config import get_playwright_proxy_settings, get_httpx_proxy
 import httpx
 
@@ -236,6 +236,24 @@ async def _handle_response(db_path: str, resp) -> None:
             duration_ms=None,
             error=None,
         )
+        # block detection heuristics for web responses
+        if status in (301, 302, 303, 307, 308):
+            loc = None
+            try:
+                loc = (await resp.all_headers()).get("location")
+            except Exception:
+                pass
+            if loc and "ip-blokk" in loc:
+                await insert_block_event(
+                    db_path,
+                    source="web",
+                    url=url,
+                    status=status,
+                    block_type="geo_ip_block",
+                    evidence=f"redirect:{loc}",
+                    proxy_used=None,
+                    user_agent=None,
+                )
         if not is_api_request(url):
             return
         payload = await extract_json_from_response(resp)
@@ -392,6 +410,24 @@ async def poll_api_once(db_path: str, client: httpx.AsyncClient) -> int:
                 duration_ms=None,
                 error=str(e),
             )
+            # try to detect HTML/IP-block via exception or text
+            try:
+                if hasattr(e, "response") and e.response is not None:
+                    r = e.response
+                    ct = r.headers.get("content-type", "").lower()
+                    if "text/html" in ct:
+                        await insert_block_event(
+                            db_path,
+                            source="api",
+                            url=url,
+                            status=r.status_code,
+                            block_type="html_block",
+                            evidence="content-type:text/html",
+                            proxy_used=str(client._proxies) if hasattr(client, "_proxies") else None,
+                            user_agent=client.headers.get("User-Agent"),
+                        )
+            except Exception:
+                pass
     return processed
 
 

@@ -9,6 +9,7 @@ from rich import print
 
 from .scraper import run_scraper, run_api_poller
 from .storage import init_db
+from .blocker import next_action
 
 app = typer.Typer(add_completion=False)
 
@@ -51,6 +52,22 @@ def scrape(
         asyncio.run(runner())
     except KeyboardInterrupt:
         print("[yellow]Stopped by user[/]")
+
+
+@app.command()
+def analyze(db: Path = typer.Option(Path("tippmix.db"), help="SQLite database path")):
+    """Analyze recent block events and suggest mitigation."""
+    import sqlite3
+    con = sqlite3.connect(str(db))
+    cur = con.cursor()
+    cur.execute("SELECT occurred_at, source, url, status, block_type, evidence FROM block_events ORDER BY id DESC LIMIT 20")
+    rows = cur.fetchall()
+    if not rows:
+        print("[green]No block events recorded[/]")
+        return
+    for ts, src, url, status, bt, ev in rows:
+        strat, why = next_action(bt)
+        print(f"[bold]{ts}[/] {src} {status} {bt}\n- {url}\n- evidence: {ev}\n- mitigation: {strat} ({why})\n")
 
 
 if __name__ == "__main__":
