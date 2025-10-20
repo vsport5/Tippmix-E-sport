@@ -9,7 +9,19 @@ from .config import ACTIVE_PROXY_FILE
 from .blocker import choose_mitigation
 
 PROXY_SOURCES = [
+    # Curated lists
     "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt",
+    "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/https.txt",
+    "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks4.txt",
+    "https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks5.txt",
+    # ProxyScrape
+    "https://api.proxyscrape.com/v3/free-proxy-list/get?request=displayproxies&proxy_format=protocolipport&format=text&timeout=6000&country=hu",
+    "https://api.proxyscrape.com/?request=getproxies&proxytype=http&timeout=6000&country=HU&anonymity=Elite",
+    "https://api.proxyscrape.com/?request=getproxies&proxytype=https&timeout=6000&country=HU&anonymity=Elite",
+    "https://api.proxyscrape.com/?request=getproxies&proxytype=socks5&timeout=8000&country=HU&anonymity=Elite",
+    # Proxy-List.download
+    "https://www.proxy-list.download/api/v1/get?type=http&country=HU",
+    "https://www.proxy-list.download/api/v1/get?type=https&country=HU",
 ]
 
 UA = (
@@ -32,11 +44,24 @@ async def fetch_candidates() -> list[str]:
                         if not s:
                             continue
                         if "://" not in s:
-                            s = "http://" + s
+                            # Guess protocol from source
+                            if "socks5" in u:
+                                s = "socks5://" + s
+                            elif "socks4" in u:
+                                s = "socks4://" + s
+                            else:
+                                s = "http://" + s
                         res.append(s)
             except Exception:
                 pass
-    return res[:500]
+    # deduplicate preserving order
+    seen = set()
+    uniq: list[str] = []
+    for p in res:
+        if p not in seen:
+            uniq.append(p)
+            seen.add(p)
+    return uniq[:1200]
 
 
 async def is_hu(proxy: str) -> bool:
@@ -55,15 +80,19 @@ async def is_hu(proxy: str) -> bool:
 async def rotate_proxy() -> Optional[str]:
     cands = await fetch_candidates()
     # naive scan for HU
-    for p in cands:
-        if await is_hu(p):
-            try:
-                with open(ACTIVE_PROXY_FILE, "w", encoding="utf-8") as f:
-                    f.write(p)
-                logger.info("Activated proxy {}", p)
-                return p
-            except Exception:
-                return None
+    batch = 30
+    for i in range(0, len(cands), batch):
+        sub = cands[i:i+batch]
+        checks = await asyncio.gather(*[is_hu(p) for p in sub])
+        for p, ok in zip(sub, checks):
+            if ok:
+                try:
+                    with open(ACTIVE_PROXY_FILE, "w", encoding="utf-8") as f:
+                        f.write(p)
+                    logger.info("Activated proxy {}", p)
+                    return p
+                except Exception:
+                    return None
     return None
 
 
