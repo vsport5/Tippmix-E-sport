@@ -1,0 +1,5 @@
+Proxy listening on http://localhost:5001
+Tippmix API returned HTML instead of JSON
+[0mGET /api/events [31m502[0m 3651.742 ms - 53[0m
+Tippmix API returned HTML instead of JSON
+[0mGET /api/search [31m502[0m 1311.527 ms - 53[0m

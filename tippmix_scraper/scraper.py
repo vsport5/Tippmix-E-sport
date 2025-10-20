@@ -13,6 +13,7 @@ from playwright_stealth import stealth_async
 
 from .parser import parse_match
 from .storage import insert_raw, upsert_match, insert_network_event
+from .config import get_playwright_proxy_settings, get_httpx_proxy
 import httpx
 
 
@@ -30,10 +31,14 @@ API_GLOBS = [
 @asynccontextmanager
 async def launch_browser(headless: bool = True) -> AsyncIterator[Browser]:
     async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=headless,
-            args=["--no-sandbox", "--disable-setuid-sandbox"],
-        )
+        launch_kwargs = {
+            "headless": headless,
+            "args": ["--no-sandbox", "--disable-setuid-sandbox"],
+        }
+        proxy = get_playwright_proxy_settings()
+        if proxy:
+            launch_kwargs["proxy"] = proxy
+        browser = await p.chromium.launch(**launch_kwargs)
         try:
             yield browser
         finally:
@@ -402,7 +407,8 @@ async def run_api_poller(db_path: str, interval_seconds: int = 60) -> None:
         "Origin": "https://www.tippmix.hu",
         "Referer": "https://www.tippmix.hu/",
     }
-    async with httpx.AsyncClient(headers=headers, http2=True, verify=True) as client:
+    proxies = get_httpx_proxy()
+    async with httpx.AsyncClient(headers=headers, http2=True, verify=True, proxies=proxies) as client:
         logger.info("Starting Tippmix API poller...")
         while True:
             try:
