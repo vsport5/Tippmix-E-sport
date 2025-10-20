@@ -373,8 +373,9 @@ API_ENDPOINTS = [
 ]
 
 
-async def poll_api_once(db_path: str, client: httpx.AsyncClient) -> int:
+async def poll_api_once(db_path: str, client: httpx.AsyncClient) -> tuple[int, int]:
     processed = 0
+    blocks = 0
     for path in API_ENDPOINTS:
         url = API_BASE + path
         try:
@@ -414,6 +415,7 @@ async def poll_api_once(db_path: str, client: httpx.AsyncClient) -> int:
                     proxy_used=str(client._proxies) if hasattr(client, "_proxies") else None,
                     user_agent=client.headers.get("User-Agent"),
                 )
+                blocks += 1
             if ctype.find("json") >= 0:
                 data = resp.json()
                 # Store raw
@@ -451,7 +453,7 @@ async def poll_api_once(db_path: str, client: httpx.AsyncClient) -> int:
                         )
             except Exception:
                 pass
-    return processed
+    return (processed, blocks)
 
 
 @backoff.on_exception(backoff.expo, Exception, max_time=300)
@@ -466,14 +468,20 @@ async def run_api_poller(db_path: str, interval_seconds: int = 60) -> None:
         "Origin": "https://www.tippmix.hu",
         "Referer": "https://www.tippmix.hu/",
     }
-    proxies = get_httpx_proxy()
-    async with httpx.AsyncClient(headers=headers, http2=True, verify=True, proxies=proxies) as client:
-        logger.info("Starting Tippmix API poller...")
-        while True:
-            try:
-                count = await poll_api_once(db_path, client)
+    logger.info("Starting Tippmix API poller...")
+    while True:
+        try:
+            proxies = get_httpx_proxy()
+            async with httpx.AsyncClient(headers=headers, http2=True, verify=True, proxies=proxies) as client:
+                count, blocks = await poll_api_once(db_path, client)
                 if count:
                     logger.info("API poller parsed {} matches", count)
-            except Exception as e:
-                logger.debug("API poller error: {}", e)
-            await asyncio.sleep(interval_seconds)
+                if blocks:
+                    try:
+                        from .mitigator import auto_mitigate
+                        await auto_mitigate("geo_ip_block")
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.debug("API poller error: {}", e)
+        await asyncio.sleep(interval_seconds)
