@@ -1,0 +1,17 @@
+{
+  "name": "tippmix-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "express": "4.21.1",
+    "node-fetch": "3.3.2",
+    "cors": "2.8.5",
+    "morgan": "1.10.0",
+    "https-proxy-agent": "7.0.5"
+  }
+}

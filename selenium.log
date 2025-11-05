@@ -1,0 +1,121 @@
+/home/ubuntu/.local/lib/python3.13/site-packages/playwright_stealth/stealth.py:6: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources
+╭───────────────────── Traceback (most recent call last) ──────────────────────╮
+│ in _run_module_as_main:198                                                   │
+│ ╭───────────────────────────────── locals ─────────────────────────────────╮ │
+│ │   alter_argv = True                                                      │ │
+│ │         code = <code object <module> at 0x2e60a6e0, file                 │ │
+│ │                "/workspace/tippmix_scraper/cli.py", line 1>              │ │
+│ │ main_globals = {                                                         │ │
+│ │                │   '__name__': '__main__',                               │ │
+│ │                │   '__doc__': None,                                      │ │
+│ │                │   '__package__': 'tippmix_scraper',                     │ │
+│ │                │   '__loader__':                                         │ │
+│ │                <_frozen_importlib_external.SourceFileLoader object at    │ │
+│ │                0x7f0ca85445f0>,                                          │ │
+│ │                │   '__spec__': ModuleSpec(name='tippmix_scraper.cli',    │ │
+│ │                loader=<_frozen_importlib_external.SourceFileLoader       │ │
+│ │                object at 0x7f0ca85445f0>,                                │ │
+│ │                origin='/workspace/tippmix_scraper/cli.py'),              │ │
+│ │                │   '__annotations__': {},                                │ │
+│ │                │   '__builtins__': <module 'builtins' (built-in)>,       │ │
+│ │                │   '__file__': '/workspace/tippmix_scraper/cli.py',      │ │
+│ │                │   '__cached__':                                         │ │
+│ │                '/workspace/tippmix_scraper/__pycache__/cli.cpython-313.… │ │
+│ │                │   'annotations': _Feature((3, 7, 0, 'beta', 1), None,   │ │
+│ │                16777216),                                                │ │
+│ │                │   ... +16                                               │ │
+│ │                }                                                         │ │
+│ │     mod_name = 'tippmix_scraper.cli'                                     │ │
+│ │     mod_spec = ModuleSpec(name='tippmix_scraper.cli',                    │ │
+│ │                loader=<_frozen_importlib_external.SourceFileLoader       │ │
+│ │                object at 0x7f0ca85445f0>,                                │ │
+│ │                origin='/workspace/tippmix_scraper/cli.py')               │ │
+│ ╰──────────────────────────────────────────────────────────────────────────╯ │
+│ in _run_code:88                                                              │
+│ ╭───────────────────────────────── locals ─────────────────────────────────╮ │
+│ │       cached = '/workspace/tippmix_scraper/__pycache__/cli.cpython-313.… │ │
+│ │         code = <code object <module> at 0x2e60a6e0, file                 │ │
+│ │                "/workspace/tippmix_scraper/cli.py", line 1>              │ │
+│ │        fname = '/workspace/tippmix_scraper/cli.py'                       │ │
+│ │ init_globals = None                                                      │ │
+│ │       loader = <_frozen_importlib_external.SourceFileLoader object at    │ │
+│ │                0x7f0ca85445f0>                                           │ │
+│ │     mod_name = '__main__'                                                │ │
+│ │     mod_spec = ModuleSpec(name='tippmix_scraper.cli',                    │ │
+│ │                loader=<_frozen_importlib_external.SourceFileLoader       │ │
+│ │                object at 0x7f0ca85445f0>,                                │ │
+│ │                origin='/workspace/tippmix_scraper/cli.py')               │ │
+│ │     pkg_name = 'tippmix_scraper'                                         │ │
+│ │  run_globals = {                                                         │ │
+│ │                │   '__name__': '__main__',                               │ │
+│ │                │   '__doc__': None,                                      │ │
+│ │                │   '__package__': 'tippmix_scraper',                     │ │
+│ │                │   '__loader__':                                         │ │
+│ │                <_frozen_importlib_external.SourceFileLoader object at    │ │
+│ │                0x7f0ca85445f0>,                                          │ │
+│ │                │   '__spec__': ModuleSpec(name='tippmix_scraper.cli',    │ │
+│ │                loader=<_frozen_importlib_external.SourceFileLoader       │ │
+│ │                object at 0x7f0ca85445f0>,                                │ │
+│ │                origin='/workspace/tippmix_scraper/cli.py'),              │ │
+│ │                │   '__annotations__': {},                                │ │
+│ │                │   '__builtins__': <module 'builtins' (built-in)>,       │ │
+│ │                │   '__file__': '/workspace/tippmix_scraper/cli.py',      │ │
+│ │                │   '__cached__':                                         │ │
+│ │                '/workspace/tippmix_scraper/__pycache__/cli.cpython-313.… │ │
+│ │                │   'annotations': _Feature((3, 7, 0, 'beta', 1), None,   │ │
+│ │                16777216),                                                │ │
+│ │                │   ... +16                                               │ │
+│ │                }                                                         │ │
+│ │  script_name = None                                                      │ │
+│ ╰──────────────────────────────────────────────────────────────────────────╯ │
+│                                                                              │
+│ /workspace/tippmix_scraper/cli.py:101 in <module>                            │
+│                                                                              │
+│    98                                                                        │
+│    99                                                                        │
+│   100 if __name__ == "__main__":                                             │
+│ ❱ 101 │   app()  # pragma: no cover                                          │
+│   102                                                                        │
+│                                                                              │
+│ ╭───────────────────────────────── locals ─────────────────────────────────╮ │
+│ │ annotations = _Feature((3, 7, 0, 'beta', 1), None, 16777216)             │ │
+│ │         app = <typer.main.Typer object at 0x7f0ca4873230>                │ │
+│ │     asyncio = <module 'asyncio' from                                     │ │
+│ │               '/usr/lib/python3.13/asyncio/__init__.py'>                 │ │
+│ │    Optional = typing.Optional                                            │ │
+│ │       typer = <module 'typer' from                                       │ │
+│ │               '/home/ubuntu/.local/lib/python3.13/site-packages/typer/_… │ │
+│ ╰──────────────────────────────────────────────────────────────────────────╯ │
+│                                                                              │
+│ /home/ubuntu/.local/lib/python3.13/site-packages/typer/main.py:338 in        │
+│ __call__                                                                     │
+│                                                                              │
+│ /home/ubuntu/.local/lib/python3.13/site-packages/typer/main.py:321 in        │
+│ __call__                                                                     │
+│                                                                              │
+│ /home/ubuntu/.local/lib/python3.13/site-packages/typer/main.py:360 in        │
+│ get_command                                                                  │
+│                                                                              │
+│ /home/ubuntu/.local/lib/python3.13/site-packages/typer/main.py:342 in        │
+│ get_group                                                                    │
+│                                                                              │
+│ /home/ubuntu/.local/lib/python3.13/site-packages/typer/main.py:496 in        │
+│ get_group_from_info                                                          │
+│                                                                              │
+│ /home/ubuntu/.local/lib/python3.13/site-packages/typer/main.py:590 in        │
+│ get_command_from_info                                                        │
+│                                                                              │
+│ /home/ubuntu/.local/lib/python3.13/site-packages/typer/main.py:566 in        │
+│ get_params_convertors_ctx_param_name_from_function                           │
+│                                                                              │
+│ /home/ubuntu/.local/lib/python3.13/site-packages/typer/main.py:900 in        │
+│ get_click_param                                                              │
+│                                                                              │
+│ /home/ubuntu/.local/lib/python3.13/site-packages/typer/core.py:427 in        │
+│ __init__                                                                     │
+│                                                                              │
+│ /home/ubuntu/.local/lib/python3.13/site-packages/click/core.py:2793 in       │
+│ __init__                                                                     │
+╰──────────────────────────────────────────────────────────────────────────────╯
+TypeError: Secondary flag is not valid for non-boolean flag.
